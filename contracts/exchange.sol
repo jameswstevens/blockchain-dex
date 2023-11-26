@@ -103,6 +103,13 @@ contract TokenExchange is Ownable {
         payable
     {
         /******* TODO: Implement this function *******/
+
+        // find delta y
+        // delta y = (y * deltax) / x + deltax
+
+
+        // new_total_shares = delta y
+        // alice_shares = (slice_eth * total_new_shares) / total_eth
     }
 
 

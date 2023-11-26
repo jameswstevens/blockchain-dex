@@ -594,7 +594,8 @@ async function getPoolState() {
 
 /*** ADD LIQUIDITY ***/
 async function addLiquidity(amountEth, maxSlippagePct) {
-    /** TODO: ADD YOUR CODE HERE **/
+    wei = ethers.utils.parseEther(amountEth);
+    await exchange_contract.connect(provider.getSigner(defaultAccount)).addLiquidity({ value: wei });
 }
 
 /*** REMOVE LIQUIDITY ***/
