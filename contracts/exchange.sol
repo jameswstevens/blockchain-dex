@@ -96,20 +96,71 @@ contract TokenExchange is Ownable {
     
     /* ========================= Liquidity Provider Functions =========================  */ 
 
+    /* ========================= Liquidity Provider Functions =========================  */ 
+    // Function findAmtShares returns the amount of shares associated with the given amount of eth
+    function findAmtShares(uint ethAmt) public view returns (uint) {
+        uint shares = ((multiplier * ethAmt) / eth_reserves) * total_shares;
+        return shares / multiplier;
+    }
+
+    function tokenToEthRate() public view returns (uint) {
+        return (token_reserves * multiplier) / eth_reserves;
+    }
+
+    function ethToTokenRate() public view returns (uint) {
+        return (eth_reserves * multiplier) / token_reserves;
+    }
+
     // Function addLiquidity: Adds liquidity given a supply of ETH (sent to the contract as msg.value).
     // You can change the inputs, or the scope of your function, as needed.
-    function addLiquidity() 
+    function addLiquidity(uint maxExchangeRate, uint minExchangeRate) 
         external 
         payable
     {
-        /******* TODO: Implement this function *******/
+        console.log("Token reserves:", token_reserves);
+        console.log("K value:", k);
+        console.log("ETH reserves:", eth_reserves);
+        console.log("User's shares", lps[msg.sender]);
+        console.log("Total shares: ", total_shares);
+        console.log("Add liquidity of amount : ", msg.value);
 
-        // find delta y
-        // delta y = (y * deltax) / x + deltax
+        // Require rate has not slipped out of bounds
+        uint rate = ethToTokenRate();
+        require(rate <= maxExchangeRate, "Current rate has moved above maxExchangeRate");
+        require(rate >= minExchangeRate, "Current rate has moved below minExchangeRate");
 
+        // Find equivalent amount of tokens given Eth amount
+        uint tokensAmount = (token_reserves * msg.value) / eth_reserves;
 
-        // new_total_shares = delta y
-        // alice_shares = (slice_eth * total_new_shares) / total_eth
+        console.log("this equals tokensAmount:", tokensAmount);
+        require(msg.value > 0, "Must add positive amount of liquidity");
+        require(token.balanceOf(msg.sender) >= tokensAmount, "Sender does not have enough tokens to add that amount of liquidity");
+
+        // Update liquidity
+        uint newShares = findAmtShares(msg.value);
+        total_shares += newShares;
+        lps[msg.sender] += newShares;
+        console.log("Shares to add: ", newShares);
+        
+        // Pay contract
+        console.log("Before paying: ", token.balanceOf(msg.sender));
+        token.transferFrom(msg.sender, address(this), tokensAmount);
+        console.log("Contract after payment: ", token.balanceOf(address(this)));
+
+        // Update exchange state
+        eth_reserves = address(this).balance;
+        token_reserves = token.balanceOf(address(this));
+
+        k = address(this).balance * token.balanceOf(address(this));
+        //k = token_reserves * eth_reserves;
+
+        console.log("After paying: ", token.balanceOf(msg.sender));
+        console.log("Contract after payment: ", token.balanceOf(address(this)));
+        console.log("Token reserves:", token_reserves);
+        console.log("K value:", k);
+        console.log("ETH reserves:", eth_reserves);
+        console.log("Total shares: ", total_shares);
+        console.log("User's shares", lps[msg.sender]);
     }
 
 

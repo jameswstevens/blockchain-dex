@@ -372,167 +372,223 @@ const token_contract = new ethers.Contract(token_address, token_abi, provider.ge
 // TODO: Paste your exchange contract address and ABIs here!
 const exchange_address = '0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512';
 const exchange_abi = [
-{
-  "inputs": [],
-  "stateMutability": "nonpayable",
-  "type": "constructor"
-},
-{
-  "anonymous": false,
-  "inputs": [
-    {
-      "indexed": true,
-      "internalType": "address",
-      "name": "previousOwner",
-      "type": "address"
-    },
-    {
-      "indexed": true,
-      "internalType": "address",
-      "name": "newOwner",
-      "type": "address"
-    }
-  ],
-  "name": "OwnershipTransferred",
-  "type": "event"
-},
-{
-  "inputs": [],
-  "name": "addLiquidity",
-  "outputs": [],
-  "stateMutability": "payable",
-  "type": "function"
-},
-{
-  "inputs": [
-    {
-      "internalType": "uint256",
-      "name": "amountTokens",
-      "type": "uint256"
-    }
-  ],
-  "name": "createPool",
-  "outputs": [],
-  "stateMutability": "payable",
-  "type": "function"
-},
-{
-  "inputs": [],
-  "name": "exchange_name",
-  "outputs": [
-    {
-      "internalType": "string",
-      "name": "",
-      "type": "string"
-    }
-  ],
-  "stateMutability": "view",
-  "type": "function"
-},
-{
-  "inputs": [],
-  "name": "getSwapFee",
-  "outputs": [
-    {
-      "internalType": "uint256",
-      "name": "",
-      "type": "uint256"
-    },
-    {
-      "internalType": "uint256",
-      "name": "",
-      "type": "uint256"
-    }
-  ],
-  "stateMutability": "view",
-  "type": "function"
-},
-{
-  "inputs": [],
-  "name": "owner",
-  "outputs": [
-    {
-      "internalType": "address",
-      "name": "",
-      "type": "address"
-    }
-  ],
-  "stateMutability": "view",
-  "type": "function"
-},
-{
-  "inputs": [],
-  "name": "removeAllLiquidity",
-  "outputs": [],
-  "stateMutability": "payable",
-  "type": "function"
-},
-{
-  "inputs": [
-    {
-      "internalType": "uint256",
-      "name": "amountETH",
-      "type": "uint256"
-    }
-  ],
-  "name": "removeLiquidity",
-  "outputs": [],
-  "stateMutability": "payable",
-  "type": "function"
-},
-{
-  "inputs": [],
-  "name": "renounceOwnership",
-  "outputs": [],
-  "stateMutability": "nonpayable",
-  "type": "function"
-},
-{
-  "inputs": [],
-  "name": "swapETHForTokens",
-  "outputs": [],
-  "stateMutability": "payable",
-  "type": "function"
-},
-{
-  "inputs": [
-    {
-      "internalType": "uint256",
-      "name": "amountTokens",
-      "type": "uint256"
-    }
-  ],
-  "name": "swapTokensForETH",
-  "outputs": [],
-  "stateMutability": "payable",
-  "type": "function"
-},
-{
-  "inputs": [],
-  "name": "token",
-  "outputs": [
-    {
-      "internalType": "contract Token",
-      "name": "",
-      "type": "address"
-    }
-  ],
-  "stateMutability": "view",
-  "type": "function"
-},
-{
-  "inputs": [
-    {
-      "internalType": "address",
-      "name": "newOwner",
-      "type": "address"
-    }
-  ],
-  "name": "transferOwnership",
-  "outputs": [],
-  "stateMutability": "nonpayable",
-  "type": "function"
-}
+  {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "previousOwner",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "OwnershipTransferred",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "maxExchangeRate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minExchangeRate",
+        "type": "uint256"
+      }
+    ],
+    "name": "addLiquidity",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "amountTokens",
+        "type": "uint256"
+      }
+    ],
+    "name": "createPool",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "ethToTokenRate",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "exchange_name",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "ethAmt",
+        "type": "uint256"
+      }
+    ],
+    "name": "findAmtShares",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getSwapFee",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "removeAllLiquidity",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "amountETH",
+        "type": "uint256"
+      }
+    ],
+    "name": "removeLiquidity",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "renounceOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "swapETHForTokens",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "amountTokens",
+        "type": "uint256"
+      }
+    ],
+    "name": "swapTokensForETH",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "token",
+    "outputs": [
+      {
+        "internalType": "contract Token",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "tokenToEthRate",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
 ];     
 const exchange_contract = new ethers.Contract(exchange_address, exchange_abi, provider.getSigner());
 
@@ -594,8 +650,16 @@ async function getPoolState() {
 
 /*** ADD LIQUIDITY ***/
 async function addLiquidity(amountEth, maxSlippagePct) {
-    wei = ethers.utils.parseEther(amountEth);
-    await exchange_contract.connect(provider.getSigner(defaultAccount)).addLiquidity({ value: wei });
+  let state = await getPoolState();
+  let currentRate = state.eth_token_rate;
+  let maxSlippage = Number(maxSlippagePct) / 100;
+  let maxRate = (currentRate + (maxSlippage * currentRate)) * exchange_rate_multiplier;
+  let minRate = (currentRate - (maxSlippage * currentRate)) * exchange_rate_multiplier;
+  maxRate = ethers.utils.parseEther(maxRate.toString());
+  minRate = ethers.utils.parseEther(minRate.toString());
+  const amountWei = ethers.utils.parseEther(amountEth);
+  await token_contract.connect(provider.getSigner(defaultAccount)).approve(exchange_address, state.token_liquidity);
+  await exchange_contract.connect(provider.getSigner(defaultAccount)).addLiquidity(maxRate, minRate, { value: amountWei });
 }
 
 /*** REMOVE LIQUIDITY ***/
