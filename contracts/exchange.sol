@@ -297,11 +297,50 @@ contract TokenExchange is Ownable {
 
     // Function swapTokensForETH: Swaps your token with ETH
     // You can change the inputs, or the scope of your function, as needed.
-    function swapTokensForETH(uint amountTokens)
+    function swapTokensForETH(uint amountTokens, uint maxExchangeRate)
         external 
         payable
     {
-        /******* TODO: Implement this function *******/
+        console.log("Token reserves:", token_reserves);
+        console.log("K value:", k);
+        console.log("ETH reserves:", eth_reserves);
+        console.log("Total shares: ", total_shares);
+        console.log("swapTokensForETH of tokenAmt: ", amountTokens);
+
+        require(amountTokens <= token.balanceOf(msg.sender), "Not enough tokens to make this swap");
+        require(amountTokens > 0, "Must swap a positive amount of tokens");
+
+        uint rate = tokenToEthRate();
+        require(rate <= maxExchangeRate, "Current rate has moved above maxExchangeRate");
+
+        
+        //amountTokens -= fee;
+        uint fee = (swap_fee_numerator * amountTokens) / swap_fee_denominator;
+        //amountTokens -= fee;
+        token_fee_reserves += fee;
+
+        uint amountEth = eth_reserves - (k / (token_reserves + (amountTokens - fee)));
+
+        
+        console.log("Fee: ", fee); 
+
+        require(amountEth < eth_reserves, "Insufficient reserves of ETH for the transaction");
+        console.log("Amount to Eth: ", amountEth);
+
+        // Adjust user balances
+        console.log("Balance of sender: ", token.balanceOf(msg.sender));
+        token.transferFrom(msg.sender, address(this), amountTokens);
+        payable(msg.sender).transfer(amountEth);
+
+        // Adjust reserves
+        token_reserves = token.balanceOf(address(this));
+        eth_reserves = address(this).balance;
+        
+
+        console.log("Token reserves:", token_reserves);
+        console.log("K value:", k);
+        console.log("ETH reserves:", eth_reserves);
+        console.log("Total shares: ", total_shares);
     }
 
 
@@ -309,10 +348,47 @@ contract TokenExchange is Ownable {
     // Function swapETHForTokens: Swaps ETH for your tokens
     // ETH is sent to contract as msg.value
     // You can change the inputs, or the scope of your function, as needed.
-    function swapETHForTokens()
+    function swapETHForTokens(uint maxExchangeRate)
         external
         payable 
     {
-        /******* TODO: Implement this function *******/
+        console.log("SwapETHForTokens", msg.value);
+        console.log("Token reserves:", token_reserves);
+        console.log("K value:", k);
+        console.log("ETH reserves:", eth_reserves);
+        console.log("maxExchangeRate: ", maxExchangeRate);
+
+        require(msg.value > 0, "Cannot swap a negative amount");
+
+        uint rate = ethToTokenRate();
+        console.log("currentRate: ", rate);
+        require(rate <= maxExchangeRate, "Current rate has moved above maxExchangeRate");
+
+        uint amountEth = msg.value;
+        uint fee = (swap_fee_numerator * amountEth) / swap_fee_denominator;
+        //amountEth -= fee;
+        eth_fee_reserves += fee;
+
+        console.log("Fee: ", fee);  
+
+        uint amountTokens = token_reserves - (k / (eth_reserves + (amountEth-fee)));
+        console.log("TokensAmount  = ", amountTokens);
+        require(amountTokens > 0, "Cannot give back a negative token number");
+        require(amountTokens < token_reserves, "Not enough tokens in reserve to make swap");
+
+        token.transfer(msg.sender, amountTokens);
+
+        console.log("Swapper eth balance: ", msg.sender.balance);
+        console.log("Swapper token balance:", token.balanceOf(msg.sender));
+
+        token_reserves = token.balanceOf(address(this));
+        eth_reserves = address(this).balance;
+
+        //token_reserves -=  amountTokens;
+        //eth_reserves += amountEth;
+
+        console.log("Token reserves:", token_reserves);
+        console.log("K value:", k);
+        console.log("ETH reserves:", eth_reserves);
     }
 }

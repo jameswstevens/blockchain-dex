@@ -700,11 +700,25 @@ async function removeAllLiquidity(maxSlippagePct) {
 
 /*** SWAP ***/
 async function swapTokensForETH(amountToken, maxSlippagePct) {
-    /** TODO: ADD YOUR CODE HERE **/
+  let state = await getPoolState();
+  let currentRate = state.token_eth_rate;
+  let maxSlippage = Number(maxSlippagePct) / 100;
+  let maxRate = (currentRate + (maxSlippage * currentRate)) * exchange_rate_multiplier;
+  maxRate = ethers.utils.parseEther(maxRate.toString());
+  await token_contract.connect(provider.getSigner(defaultAccount)).approve(exchange_address, state.token_liquidity);
+  await exchange_contract.connect(provider.getSigner(defaultAccount)).swapTokensForETH(amountToken, maxRate);
 }
 
 async function swapETHForTokens(amountEth, maxSlippagePct) {
-    /** TODO: ADD YOUR CODE HERE **/
+  let state = await getPoolState();
+  let currentRate = state.eth_token_rate;
+  console.log("current rate: ", currentRate);
+  let maxSlippage = Number(maxSlippagePct) / 100;
+  let maxRate = (currentRate + (maxSlippage * currentRate)) * exchange_rate_multiplier;
+  maxRate = ethers.utils.parseEther(maxRate.toString());
+  console.log("maxRate: ", maxRate);
+  const amountWei = ethers.utils.parseEther(amountEth.toString());
+  await exchange_contract.connect(provider.getSigner(defaultAccount)).swapETHForTokens(maxRate, { value: amountWei });
 }
 
 // =============================================================================
