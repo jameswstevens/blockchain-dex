@@ -166,11 +166,64 @@ contract TokenExchange is Ownable {
 
     // Function removeLiquidity: Removes liquidity given the desired amount of ETH to remove.
     // You can change the inputs, or the scope of your function, as needed.
-    function removeLiquidity(uint amountETH)
+    function removeLiquidity(uint amountETH, uint maxExchangeRate, uint minExchangeRate)
         public 
         payable
     {
-        /******* TODO: Implement this function *******/
+        console.log("Token reserves:", token_reserves);
+        console.log("K value:", k);
+        console.log("ETH reserves:", eth_reserves);
+        console.log("Total shares: ", total_shares);
+        console.log("User's shares", lps[msg.sender]);
+        console.log("Remove liquidity of amount : ", amountETH);
+
+        uint rate = ethToTokenRate();
+        console.log("Current rate: ", rate);
+        console.log("minRate: ", minExchangeRate);
+        console.log("maxRate: ", maxExchangeRate);
+        require(rate <= maxExchangeRate, "Current rate has moved above maxExchangeRate");
+        require(rate >= minExchangeRate, "Current rate has moved below minExchangeRate");
+
+        require(amountETH > 0, "Must remove positive amount of liquidity");
+        require(amountETH < eth_reserves, "Cannot deplete ETH reserves to 0");
+        
+        // Require that the LP has enough liquidity to remove this amount of ETH
+        uint providerProportion = (lps[msg.sender] * multiplier) / total_shares;
+        uint amountProportion = (amountETH * multiplier) / eth_reserves;
+        require(providerProportion >= amountProportion, "LP has insufficient liquidity");
+
+        uint tokensAmount = (token_reserves * amountETH) / eth_reserves;
+        require(tokensAmount < token_reserves, "Cannot deplete token reserves to 0");
+        console.log("this equals tokensAmount:", tokensAmount);
+
+        // update liquidity and shares and rewards to give
+        uint removedShares = findAmtShares(amountETH);
+        uint ethRewards = (removedShares * eth_fee_reserves) / total_shares;
+        uint tokenRewards = (removedShares * token_fee_reserves) / total_shares;
+        eth_fee_reserves -= ethRewards;
+        token_fee_reserves -= tokenRewards;
+
+        total_shares -= removedShares;
+        lps[msg.sender] -= removedShares;
+        console.log("Shares to remove: ", removedShares);
+                
+        // Pay the user
+        amountETH += ethRewards;
+        tokensAmount += tokenRewards;
+        
+        token.transfer(msg.sender, tokensAmount);
+        payable(msg.sender).transfer(amountETH);
+
+        eth_reserves = address(this).balance;
+        token_reserves = token.balanceOf(address(this));
+        k = address(this).balance * token.balanceOf(address(this));
+
+        console.log("User balance: ", token.balanceOf(msg.sender));
+        console.log("Token reserves:", token_reserves);
+        console.log("K value:", k);
+        console.log("ETH reserves:", eth_reserves);
+        console.log("Total shares: ", total_shares);
+        console.log("User's shares", lps[msg.sender]);
     }
 
     // Function removeAllLiquidity: Removes all liquidity that msg.sender is entitled to withdraw

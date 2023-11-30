@@ -516,6 +516,16 @@ const exchange_abi = [
         "internalType": "uint256",
         "name": "amountETH",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "maxExchangeRate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minExchangeRate",
+        "type": "uint256"
       }
     ],
     "name": "removeLiquidity",
@@ -664,7 +674,17 @@ async function addLiquidity(amountEth, maxSlippagePct) {
 
 /*** REMOVE LIQUIDITY ***/
 async function removeLiquidity(amountEth, maxSlippagePct) {
-    /** TODO: ADD YOUR CODE HERE **/
+  let state = await getPoolState();
+  let currentRate = state.eth_token_rate;
+  let maxSlippage = Number(maxSlippagePct) / 100;
+  let maxRate = (currentRate + (maxSlippage * currentRate)) * exchange_rate_multiplier;
+  let minRate = (currentRate - (maxSlippage * currentRate)) * exchange_rate_multiplier;
+  maxRate = ethers.utils.parseEther(maxRate.toString());
+  minRate = ethers.utils.parseEther(minRate.toString());
+  console.log("minRate: ", maxRate);
+  console.log("minRate: ", maxRate);
+  const amountWei = ethers.utils.parseEther(amountEth.toString());
+  await exchange_contract.connect(provider.getSigner(defaultAccount)).removeLiquidity(amountWei, maxRate, minRate);
 }
 
 async function removeAllLiquidity(maxSlippagePct) {
