@@ -228,11 +228,67 @@ contract TokenExchange is Ownable {
 
     // Function removeAllLiquidity: Removes all liquidity that msg.sender is entitled to withdraw
     // You can change the inputs, or the scope of your function, as needed.
-    function removeAllLiquidity()
+    function removeAllLiquidity(uint maxExchangeRate, uint minExchangeRate)
         external
         payable
     {
-        /******* TODO: Implement this function *******/
+            console.log("Token reserves:", token_reserves);
+        console.log("K value:", k);
+        console.log("ETH reserves:", eth_reserves);
+        console.log("Remove all liquidity : ");
+        console.log("User's shares", lps[msg.sender]);
+        console.log("total shares: ", total_shares);
+
+        uint rate = ethToTokenRate();
+        require(rate <= maxExchangeRate, "Current rate has moved above maxExchangeRate");
+        require(rate >= minExchangeRate, "Current rate has moved below minExchangeRate");
+
+        uint userProportion = (multiplier * lps[msg.sender]) / total_shares;
+        uint maxEth = (userProportion * eth_reserves) / multiplier;
+        uint maxTokens = (userProportion * token_reserves) / multiplier;
+        require(maxEth < eth_reserves, "Cannot deplete eth reserves to 0");
+        require(maxTokens < token_reserves, "Cannot deplete token reserves to 0");
+
+        console.log("Remove max ETH of: ", maxEth);
+        console.log("Remove max tokens of: ", maxTokens);
+
+        // update liquidity and shares
+        uint removedShares = findAmtShares(maxEth);
+
+        uint ethRewards = (removedShares * eth_fee_reserves) / total_shares;
+        uint tokenRewards = (removedShares * token_fee_reserves) / total_shares;
+        eth_fee_reserves -= ethRewards;
+        token_fee_reserves -= tokenRewards;
+
+        console.log("tokenRewards", tokenRewards);
+        console.log("ethRewards:", ethRewards);
+
+        total_shares -= removedShares;
+        lps[msg.sender] = 0;
+        console.log("Shares to remove: ", removedShares);
+
+        // Update exchange state
+        //eth_reserves -= maxEth;
+        //token_reserves -= maxTokens;
+                
+        maxEth += ethRewards;
+        maxTokens += tokenRewards;
+
+        console.log("User balance: ", token.balanceOf(msg.sender));
+        // Pay the user
+        token.transfer(msg.sender, maxTokens);
+        payable(msg.sender).transfer(maxEth);
+
+        eth_reserves = address(this).balance;
+        token_reserves = token.balanceOf(address(this));
+        k = address(this).balance * token.balanceOf(address(this));
+        console.log("User balance: ", token.balanceOf(msg.sender));
+
+        console.log("Token reserves:", token_reserves);
+        console.log("K value:", k);
+        console.log("ETH reserves:", eth_reserves);
+        console.log("User's shares", lps[msg.sender]);
+        console.log("Total shares: ", total_shares);
     }
     /***  Define additional functions for liquidity fees here as needed ***/
 

@@ -688,7 +688,14 @@ async function removeLiquidity(amountEth, maxSlippagePct) {
 }
 
 async function removeAllLiquidity(maxSlippagePct) {
-    /** TODO: ADD YOUR CODE HERE **/
+  let state = await getPoolState();
+  let currentRate = state.eth_token_rate;
+  let maxSlippage = Number(maxSlippagePct) / 100;
+  let maxRate = (currentRate + (maxSlippage * currentRate)) * exchange_rate_multiplier;
+  let minRate = (currentRate - (maxSlippage * currentRate)) * exchange_rate_multiplier;
+  maxRate = ethers.utils.parseEther(maxRate.toString());
+  minRate = ethers.utils.parseEther(minRate.toString());
+  await exchange_contract.connect(provider.getSigner(defaultAccount)).removeAllLiquidity(maxRate, minRate);
 }
 
 /*** SWAP ***/
