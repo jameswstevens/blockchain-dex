@@ -173,15 +173,22 @@ contract TokenExchange is Ownable {
                 break;
             }
         }
-        if (!found) lp_providers.push(msg.sender); // Add to lp_providers array
+        if (!found) {
+            lp_providers.push(msg.sender); // Add to lp_providers array
+            console.log("added new lp_provider: ", msg.sender);
+        }
+
+        console.log("");
         
-        console.log("After paying: ", token.balanceOf(msg.sender));
-        console.log("Contract after payment: ", token.balanceOf(address(this)));
-        console.log("Token reserves:", token_reserves);
-        console.log("K value:", k);
-        console.log("ETH reserves:", eth_reserves);
-        console.log("Total shares: ", total_shares);
+        // console.log("After paying: ", token.balanceOf(msg.sender));
+        // console.log("Contract after payment: ", token.balanceOf(address(this)));
+        // console.log("Token reserves:", token_reserves);
+        // console.log("K value:", k);
+        // console.log("ETH reserves:", eth_reserves);
+        // console.log("Total shares: ", total_shares);
         console.log("User's shares", lp.shares);
+        console.log("lp eth fees:", lp.eth_fees);
+        console.log("lp token fees:", lp.token_fees);
     }
 
 
@@ -302,6 +309,10 @@ contract TokenExchange is Ownable {
         }
         removeLP(remove_index);
 
+        console.log("lp_shares: ", lp.shares);
+        console.log("eth_fees: ", lp.eth_fees);
+        console.log("token_fees: ", lp.token_fees);
+
         console.log("User balance: ", token.balanceOf(msg.sender));
         // Pay the user
         token.transfer(msg.sender, maxTokens);
@@ -351,6 +362,10 @@ contract TokenExchange is Ownable {
         
         console.log("Fee: ", fee); 
 
+        require(amountEth < eth_reserves, "Insufficient reserves of ETH for the transaction");
+        console.log("Amount to Eth: ", amountEth);
+
+
         // for each address in lp_providers, add the fee to thier accrued_fees
         for (uint i = 0; i < lp_providers.length; i++) {
             address addr = lp_providers[i];
@@ -359,8 +374,7 @@ contract TokenExchange is Ownable {
             console.log("Accrued token fees for ", addr, ": ", lp.token_fees);
         }
 
-        require(amountEth < eth_reserves, "Insufficient reserves of ETH for the transaction");
-        console.log("Amount to Eth: ", amountEth);
+        
 
         // Adjust user balances
         console.log("Balance of sender: ", token.balanceOf(msg.sender));
@@ -406,6 +420,11 @@ contract TokenExchange is Ownable {
 
         console.log("Fee: ", fee);  
 
+        uint amountTokens = token_reserves - (k / (eth_reserves + (amountEth-fee)));
+        console.log("TokensAmount  = ", amountTokens);
+        require(amountTokens > 0, "Cannot give back a negative token number");
+        require(amountTokens < token_reserves, "Not enough tokens in reserve to make swap");
+
         // for each address in lp_providers, add the fee to thier accrued_fees
         for (uint i = 0; i < lp_providers.length; i++) {
             address addr = lp_providers[i];
@@ -413,11 +432,6 @@ contract TokenExchange is Ownable {
             lp.eth_fees += fee;
             console.log("Accrued token fees for ", addr, ": ", lp.eth_fees);
         }
-
-        uint amountTokens = token_reserves - (k / (eth_reserves + (amountEth-fee)));
-        console.log("TokensAmount  = ", amountTokens);
-        require(amountTokens > 0, "Cannot give back a negative token number");
-        require(amountTokens < token_reserves, "Not enough tokens in reserve to make swap");
 
         token.transfer(msg.sender, amountTokens);
 
