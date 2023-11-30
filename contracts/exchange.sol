@@ -25,6 +25,10 @@ contract TokenExchange is Ownable {
     // Liquidity pool shares
     mapping(address => uint) private lps;
 
+    // Fees while lps in pool
+    mapping(address => uint) private lp_accrued_eth_fees;
+    mapping(address => uint) private lp_accrued_token_fees;
+
     // For Extra Credit only: to loop through the keys of the lps mapping
     address[] private lp_providers;      
 
@@ -99,8 +103,8 @@ contract TokenExchange is Ownable {
     /* ========================= Liquidity Provider Functions =========================  */ 
     // Function findAmtShares returns the amount of shares associated with the given amount of eth
     function findAmtShares(uint ethAmt) public view returns (uint) {
-        uint shares = ((multiplier * ethAmt) / eth_reserves) * total_shares;
-        return shares / multiplier;
+        uint shares = (ethAmt * total_shares) / eth_reserves;
+        return shares;
     }
 
     function tokenToEthRate() public view returns (uint) {
@@ -129,31 +133,41 @@ contract TokenExchange is Ownable {
         require(rate <= maxExchangeRate, "Current rate has moved above maxExchangeRate");
         require(rate >= minExchangeRate, "Current rate has moved below minExchangeRate");
 
+        require(msg.value > 0, "Must add positive amount of liquidity");
+
         // Find equivalent amount of tokens given Eth amount
-        uint tokensAmount = (token_reserves * msg.value) / eth_reserves;
+        uint tokensAmount = (msg.value * token_reserves) / eth_reserves;
 
         console.log("this equals tokensAmount:", tokensAmount);
-        require(msg.value > 0, "Must add positive amount of liquidity");
         require(token.balanceOf(msg.sender) >= tokensAmount, "Sender does not have enough tokens to add that amount of liquidity");
-
-        // Update liquidity
-        uint newShares = findAmtShares(msg.value);
-        total_shares += newShares;
-        lps[msg.sender] += newShares;
-        console.log("Shares to add: ", newShares);
         
         // Pay contract
         console.log("Before paying: ", token.balanceOf(msg.sender));
         token.transferFrom(msg.sender, address(this), tokensAmount);
         console.log("Contract after payment: ", token.balanceOf(address(this)));
 
+        // Update liquidity
+        uint newShares = findAmtShares(msg.value);
+        total_shares += newShares;
+        lps[msg.sender] += newShares;
+        console.log("Shares to add: ", newShares);
+
         // Update exchange state
         eth_reserves = address(this).balance;
         token_reserves = token.balanceOf(address(this));
 
         k = address(this).balance * token.balanceOf(address(this));
-        //k = token_reserves * eth_reserves;
 
+        // if lp provider is not already in the lp_provider array, add it
+        bool found = false;
+        for (uint i = 0; i < lp_providers.length; i++) {
+            if (lp_providers[i] == msg.sender) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) lp_providers.push(msg.sender); // Add to lp_providers array
+        
         console.log("After paying: ", token.balanceOf(msg.sender));
         console.log("Contract after payment: ", token.balanceOf(address(this)));
         console.log("Token reserves:", token_reserves);
@@ -198,18 +212,20 @@ contract TokenExchange is Ownable {
 
         // update liquidity and shares and rewards to give
         uint removedShares = findAmtShares(amountETH);
-        uint ethRewards = (removedShares * eth_fee_reserves) / total_shares;
-        uint tokenRewards = (removedShares * token_fee_reserves) / total_shares;
+        uint ethRewards = (removedShares * lp_accrued_eth_fees[msg.sender]) / total_shares;
+        uint tokenRewards = (removedShares * lp_accrued_token_fees[msg.sender]) / total_shares;
         eth_fee_reserves -= ethRewards;
         token_fee_reserves -= tokenRewards;
+        lp_accrued_eth_fees[msg.sender] -= ethRewards;
+        lp_accrued_token_fees[msg.sender] -= tokenRewards;
 
         total_shares -= removedShares;
         lps[msg.sender] -= removedShares;
         console.log("Shares to remove: ", removedShares);
                 
         // Pay the user
-        amountETH += ethRewards;
-        tokensAmount += tokenRewards;
+        // amountETH += ethRewards;
+        // tokensAmount += tokenRewards;
         
         token.transfer(msg.sender, tokensAmount);
         payable(msg.sender).transfer(amountETH);
@@ -232,7 +248,7 @@ contract TokenExchange is Ownable {
         external
         payable
     {
-            console.log("Token reserves:", token_reserves);
+        console.log("Token reserves:", token_reserves);
         console.log("K value:", k);
         console.log("ETH reserves:", eth_reserves);
         console.log("Remove all liquidity : ");
@@ -255,10 +271,12 @@ contract TokenExchange is Ownable {
         // update liquidity and shares
         uint removedShares = findAmtShares(maxEth);
 
-        uint ethRewards = (removedShares * eth_fee_reserves) / total_shares;
-        uint tokenRewards = (removedShares * token_fee_reserves) / total_shares;
+        uint ethRewards = (removedShares * lp_accrued_eth_fees[msg.sender]) / total_shares;
+        uint tokenRewards = (removedShares * lp_accrued_token_fees[msg.sender]) / total_shares;
         eth_fee_reserves -= ethRewards;
         token_fee_reserves -= tokenRewards;
+        lp_accrued_eth_fees[msg.sender] = 0;
+        lp_accrued_token_fees[msg.sender] = 0;
 
         console.log("tokenRewards", tokenRewards);
         console.log("ethRewards:", ethRewards);
@@ -271,8 +289,8 @@ contract TokenExchange is Ownable {
         //eth_reserves -= maxEth;
         //token_reserves -= maxTokens;
                 
-        maxEth += ethRewards;
-        maxTokens += tokenRewards;
+        // maxEth += ethRewards;
+        // maxTokens += tokenRewards;
 
         console.log("User balance: ", token.balanceOf(msg.sender));
         // Pay the user
@@ -324,6 +342,13 @@ contract TokenExchange is Ownable {
         
         console.log("Fee: ", fee); 
 
+        // for each address in lp_providers, add the fee to thier accrued_fees
+        for (uint i = 0; i < lp_providers.length; i++) {
+            address lp = lp_providers[i];
+            lp_accrued_token_fees[lp] += fee;
+            console.log("Accrued token fees for ", lp, ": ", lp_accrued_token_fees[lp]);
+        }
+
         require(amountEth < eth_reserves, "Insufficient reserves of ETH for the transaction");
         console.log("Amount to Eth: ", amountEth);
 
@@ -370,6 +395,13 @@ contract TokenExchange is Ownable {
         eth_fee_reserves += fee;
 
         console.log("Fee: ", fee);  
+
+        // for each address in lp_providers, add the fee to thier accrued_fees
+        for (uint i = 0; i < lp_providers.length; i++) {
+            address lp = lp_providers[i];
+            lp_accrued_eth_fees[lp] += fee;
+            console.log("Accrued eth fees for ", lp, ": ", lp_accrued_eth_fees[lp]);
+        }
 
         uint amountTokens = token_reserves - (k / (eth_reserves + (amountEth-fee)));
         console.log("TokensAmount  = ", amountTokens);

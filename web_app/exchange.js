@@ -6,7 +6,7 @@
 const provider = new ethers.providers.JsonRpcProvider("http://localhost:8545");
 var defaultAccount;
 
-const exchange_name = '';             // TODO: fill in the name of your exchange
+const exchange_name = 'ETH | Lighter Exchange';             // TODO: fill in the name of your exchange
 
 const token_name = 'Lighter';                // TODO: replace with name of your token
 const token_symbol = 'LRT';              // TODO: replace with symbol for your token
@@ -504,7 +504,18 @@ const exchange_abi = [
     "type": "function"
   },
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "maxExchangeRate",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "minExchangeRate",
+        "type": "uint256"
+      }
+    ],
     "name": "removeAllLiquidity",
     "outputs": [],
     "stateMutability": "payable",
@@ -541,7 +552,13 @@ const exchange_abi = [
     "type": "function"
   },
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "maxExchangeRate",
+        "type": "uint256"
+      }
+    ],
     "name": "swapETHForTokens",
     "outputs": [],
     "stateMutability": "payable",
@@ -552,6 +569,11 @@ const exchange_abi = [
       {
         "internalType": "uint256",
         "name": "amountTokens",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "maxExchangeRate",
         "type": "uint256"
       }
     ],
@@ -953,6 +975,6 @@ const sanityCheck = async function() {
 // Sleep 10s to ensure init() finishes before sanityCheck() runs on first load.
 // If you run into sanityCheck() errors due to init() not finishing, please extend the sleep time.
 
-// setTimeout(function () {
-//   sanityCheck();
-// }, 10000);
+setTimeout(function () {
+  sanityCheck();
+}, 10000);
