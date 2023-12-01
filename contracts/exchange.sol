@@ -48,7 +48,6 @@ contract TokenExchange is Ownable {
     // For use with exchange rates
     uint private multiplier = 10**5;
     uint private exchangePrecisionDiff = 10**8;
-    uint private weiToEth = 10**18;
 
     constructor() {}
     
@@ -139,11 +138,6 @@ contract TokenExchange is Ownable {
 
     function ethToTokenRate() public view returns (uint) {
         uint rate = (eth_reserves * multiplier) / token_reserves;
-        //console.log("with precision:", rate);
-        //rate = rate / weiToEth;
-        //console.log("in between:", rate);
-        //rate *= weiToEth;
-        //console.log("less precision:", rate);
         return rate;
     }
 
@@ -252,8 +246,8 @@ contract TokenExchange is Ownable {
         uint amountProportion = (amountETH * multiplier) / eth_reserves;
         require(providerProportion >= amountProportion, "LP has insufficient liquidity");
 
-        uint tokensAmount = ((token_reserves - token_fee_reserves) * amountETH) / eth_reserves;
-        require(tokensAmount < (token_reserves - token_fee_reserves), "Cannot deplete token reserves to 0");
+        uint tokensAmount = (token_reserves * amountETH) / eth_reserves;
+        require(tokensAmount < token_reserves, "Cannot deplete token reserves to 0");
         console.log("this equals tokensAmount:", tokensAmount);
 
         // update liquidity and shares and rewards to give
@@ -265,12 +259,6 @@ contract TokenExchange is Ownable {
         token_fee_reserves -= tokenRewards;
 
         lp.shares -= removedShares;
-
-        amountETH += ethRewards;
-        tokensAmount += tokenRewards;
-
-        console.log("Eth Rewards to lp: ", ethRewards);
-        console.log("tokenRewards to lp: ", tokenRewards);
 
         // if shares depleted, set remove to true
         bool remove = false;
@@ -323,8 +311,8 @@ contract TokenExchange is Ownable {
 
         // proportion of user:total shares
         uint userProportion = (multiplier * lp.shares) / total_shares;
-        uint maxEth = (userProportion * (eth_reserves - eth_fee_reserves)) / multiplier; // max eth withdrawable
-        uint maxTokens = (userProportion * (token_reserves - token_fee_reserves)) / multiplier; // max token withdrawable
+        uint maxEth = (userProportion * eth_reserves) / multiplier; // max eth withdrawable
+        uint maxTokens = (userProportion * token_reserves) / multiplier; // max token withdrawable
         require(maxEth < eth_reserves, "Cannot deplete eth reserves to 0");
         require(maxTokens < token_reserves, "Cannot deplete token reserves to 0");
 
@@ -340,9 +328,6 @@ contract TokenExchange is Ownable {
         console.log("Shares to remove: ", removedShares);
         console.log("ethRewards: ", ethRewards);
         console.log("tokenRewards: ", tokenRewards);
-
-        maxEth += ethRewards;
-        maxTokens += tokenRewards;
 
         // set shares to 0
         lp.shares = 0;
