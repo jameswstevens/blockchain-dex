@@ -36,7 +36,8 @@ More explination from section on the outline of the project conceptually
 
 4c. If you could change one with about this assignment, what would you change?
 
-
+Great assignment! Sanity checks or provided tests with more complex liquid providers and swaps would have been nice, 
+especially to test slippage.
 
 4d. Please feel free to include any other feedback you may have below.
 
