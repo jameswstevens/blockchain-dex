@@ -842,133 +842,143 @@ function check(name, swap_rate, condition) {
 
 
 const sanityCheck = async function() {
-    var swap_fee = await exchange_contract.connect(provider.getSigner(defaultAccount)).getSwapFee();
-    console.log("Beginning Sanity Check.");
+  var swap_fee = await exchange_contract.connect(provider.getSigner(defaultAccount)).getSwapFee();
+  console.log("Beginning Sanity Check.");
 
-    var accounts = await provider.listAccounts();
-    defaultAccount = accounts[1];
-    var score = 0;
-    var start_state = await getPoolState();
-    console.log(`Start state ${start_state}`)
-    var start_tokens = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+  var accounts = await provider.listAccounts();
+  defaultAccount = accounts[1];
+  var score = 0;
+  var start_state = await getPoolState();
+  console.log(`Start state ${JSON.stringify(start_state)}`)
+  var start_tokens = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
 
-    // No liquidity provider rewards implemented yet
-    if (Number(swap_fee[0]) == 0) {
+  // No liquidity provider rewards implemented yet
+  if (Number(swap_fee[0]) == 0) {
+      await swapETHForTokens("100", "1");
+      var state1 = await getPoolState();
+      // TODO: remove this line
+      console.log(state1)
+      var expected_tokens_received = 100 * start_state.token_eth_rate;
+      var user_tokens1 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+      score += check("Testing simple exchange of ETH to token", swap_fee[0],
+        Math.abs((start_state.token_liquidity - expected_tokens_received) - state1.token_liquidity) < 5 &&
+        (state1.eth_liquidity - start_state.eth_liquidity) === 100 &&
+        Math.abs(Number(start_tokens) + expected_tokens_received - Number(user_tokens1)) < 5);
+      
+      await swapTokensForETH("90", "1");
+      var state2 = await getPoolState();
+      // TODO: remove this line
+      console.log(state2)
+      var expected_eth_received = 90 * state1.eth_token_rate;
+      var user_tokens2 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+      score += check("Test simple exchange of token to ETH", swap_fee[0], 
+        state2.token_liquidity === (state1.token_liquidity + 90) && 
+        Math.abs((state1.eth_liquidity - expected_eth_received) - state2.eth_liquidity) < 5 &&
+        Number(user_tokens2) === (Number(user_tokens1) - 90));
+      
+      defaultAccount = accounts[0];
+      var state2 = await getPoolState();
+      user_tokens2 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+
+      await addLiquidity("100", "1");
+      var expected_tokens_added = 100 * state2.token_eth_rate;
+      var state3 = await getPoolState();
+      // TODO: remove this line
+      console.log(state3)
+      var user_tokens3 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+      score += check("Test adding liquidity", swap_fee[0], 
+        state3.eth_liquidity === (state2.eth_liquidity + 100) &&
+        Math.abs(state3.token_liquidity - (state2.token_liquidity + expected_tokens_added)) < 5 &&
+        Math.abs(Number(user_tokens3) - (Number(user_tokens2) - expected_tokens_added)) < 5);
+      
+      await removeLiquidity("10", "1");
+      var expected_tokens_removed = 10 * state3.token_eth_rate;
+      var state4 = await getPoolState();
+      console.log(state4)
+      var user_tokens4 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+      score += check("Test removing liquidity", swap_fee[0], 
+        state4.eth_liquidity === (state3.eth_liquidity - 10) &&
+        Math.abs(state4.token_liquidity - (state3.token_liquidity - expected_tokens_removed)) < 5 &&
+        Math.abs(Number(user_tokens4) - (Number(user_tokens3) + expected_tokens_removed)) < 5);
+
+      await removeAllLiquidity("1");
+      expected_tokens_removed = 90 * state4.token_eth_rate;
+      var state5 = await getPoolState();
+      console.log(state5);
+      var user_tokens5 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+      score += check("Test removing all liquidity", swap_fee[0], 
+        state5.eth_liquidity - (state4.eth_liquidity - 90) < 5 && 
+        Math.abs(state5.token_liquidity - (state4.token_liquidity - expected_tokens_removed)) < 5 &&
+        Math.abs(Number(user_tokens5) - (Number(user_tokens4) + expected_tokens_removed)) < 5); 
+  }
+
+  // LP provider rewards implemented
+  else {
+      var swap_fee = swap_fee[0] / swap_fee[1];
+      console.log("swap fee: ", swap_fee);
+
+      await swapETHForTokens("100", "1");
+      var state1 = await getPoolState();
+      var expected_tokens_received = 100 * (1 - swap_fee) * start_state.token_eth_rate;
+      var user_tokens1 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+      score += check("Testing simple exchange of ETH to token", swap_fee[0], 
+        Math.abs((start_state.token_liquidity - expected_tokens_received) - state1.token_liquidity) < 5 &&
+        (state1.eth_liquidity - start_state.eth_liquidity) === 100 &&
+        Math.abs(Number(start_tokens) + expected_tokens_received - Number(user_tokens1)) < 5);
+      
+      await swapTokensForETH("90", "1");
+      var state2 = await getPoolState();
+      var expected_eth_received = 90 * (1 - swap_fee) * state1.eth_token_rate;
+      var user_tokens2 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+      score += check("Test simple exchange of token to ETH", swap_fee[0], 
+        state2.token_liquidity === (state1.token_liquidity + 90) && 
+        Math.abs((state1.eth_liquidity - expected_eth_received) - state2.eth_liquidity) < 5 &&
+        Number(user_tokens2) === (Number(user_tokens1) - 90));
+
+      defaultAccount = accounts[0];
+      var state2 = await getPoolState();
+      user_tokens2 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+      
+      await addLiquidity("100", "1");
+      var expected_tokens_added = 100 * state2.token_eth_rate;
+      var state3 = await getPoolState();
+      var user_tokens3 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+      score += check("Test adding liquidity", swap_fee[0], 
+        state3.eth_liquidity === (state2.eth_liquidity + 100) &&
+        Math.abs(state3.token_liquidity - (state2.token_liquidity + expected_tokens_added)) < 5 &&
+        Math.abs(Number(user_tokens3) - (Number(user_tokens2) - expected_tokens_added)) < 5);
+      
+
+      // accumulate some lp rewards
+      for (var i = 0; i < 20; i++) {
         await swapETHForTokens("100", "1");
-        var state1 = await getPoolState();
-        var expected_tokens_received = 100 * start_state.token_eth_rate;
-        var user_tokens1 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
-        score += check("Testing simple exchange of ETH to token", swap_fee[0],
-          Math.abs((start_state.token_liquidity - expected_tokens_received) - state1.token_liquidity) < 5 &&
-          (state1.eth_liquidity - start_state.eth_liquidity) === 100 &&
-          Math.abs(Number(start_tokens) + expected_tokens_received - Number(user_tokens1)) < 5);
-        
-        await swapTokensForETH("90", "1");
-        var state2 = await getPoolState();
-        var expected_eth_received = 90 * state1.eth_token_rate;
-        var user_tokens2 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
-        score += check("Test simple exchange of token to ETH", swap_fee[0], 
-          state2.token_liquidity === (state1.token_liquidity + 90) && 
-          Math.abs((state1.eth_liquidity - expected_eth_received) - state2.eth_liquidity) < 5 &&
-          Number(user_tokens2) === (Number(user_tokens1) - 90));
-        
-        defaultAccount = accounts[0];
-        var state2 = await getPoolState();
-        user_tokens2 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+        await swapTokensForETH("100", "1");
+      }
 
-        await addLiquidity("100", "1");
-        var expected_tokens_added = 100 * state2.token_eth_rate;
-        var state3 = await getPoolState();
-        var user_tokens3 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
-        score += check("Test adding liquidity", swap_fee[0], 
-          state3.eth_liquidity === (state2.eth_liquidity + 100) &&
-          Math.abs(state3.token_liquidity - (state2.token_liquidity + expected_tokens_added)) < 5 &&
-          Math.abs(Number(user_tokens3) - (Number(user_tokens2) - expected_tokens_added)) < 5);
-        
-        await removeLiquidity("10", "1");
-        var expected_tokens_removed = 10 * state3.token_eth_rate;
-        var state4 = await getPoolState();
-        var user_tokens4 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
-        score += check("Test removing liquidity", swap_fee[0], 
-          state4.eth_liquidity === (state3.eth_liquidity - 10) &&
-          Math.abs(state4.token_liquidity - (state3.token_liquidity - expected_tokens_removed)) < 5 &&
-          Math.abs(Number(user_tokens4) - (Number(user_tokens3) + expected_tokens_removed)) < 5);
+      var state4 = await getPoolState();
+      var user_tokens4 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+      await removeLiquidity("50", "1");
+      // set to 22 for a bit of leeway, could potentially reduce to 20 
+      var approx_eth_removed = 50 + (20 * 100 * swap_fee * 50/5100);
+      var approx_tokens_removed = 50 * state4.token_eth_rate + (20 * 100 * swap_fee * 50/5100);
+      var state5 = await getPoolState();
+      var user_tokens5 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+      score += check("Test removing liquidity", swap_fee[0], 
+        Math.abs(state5.eth_liquidity - (state4.eth_liquidity - approx_eth_removed)) < 10 &&
+        Math.abs(state5.token_liquidity - (state4.token_liquidity - approx_tokens_removed)) < 10 &&
+        Number(user_tokens5) > Number(user_tokens4) + 45);
 
-        await removeAllLiquidity("1");
-        expected_tokens_removed = 90 * state4.token_eth_rate;
-        var state5 = await getPoolState();
-        var user_tokens5 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
-        score += check("Test removing all liquidity", swap_fee[0], 
-          state5.eth_liquidity - (state4.eth_liquidity - 90) < 5 && 
-          Math.abs(state5.token_liquidity - (state4.token_liquidity - expected_tokens_removed)) < 5 &&
-          Math.abs(Number(user_tokens5) - (Number(user_tokens4) + expected_tokens_removed)) < 5); 
-    }
-
-    // LP provider rewards implemented
-    else {
-        var swap_fee = swap_fee[0] / swap_fee[1];
-        console.log("swap fee: ", swap_fee);
-
-        await swapETHForTokens("100", "1");
-        var state1 = await getPoolState();
-        var expected_tokens_received = 100 * (1 - swap_fee) * start_state.token_eth_rate;
-        var user_tokens1 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
-        score += check("Testing simple exchange of ETH to token", swap_fee[0], 
-          Math.abs((start_state.token_liquidity - expected_tokens_received) - state1.token_liquidity) < 5 &&
-          (state1.eth_liquidity - start_state.eth_liquidity) === 100 &&
-          Math.abs(Number(start_tokens) + expected_tokens_received - Number(user_tokens1)) < 5);
-        
-        await swapTokensForETH("90", "1");
-        var state2 = await getPoolState();
-        var expected_eth_received = 90 * (1 - swap_fee) * state1.eth_token_rate;
-        var user_tokens2 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
-        score += check("Test simple exchange of token to ETH", swap_fee[0], 
-          state2.token_liquidity === (state1.token_liquidity + 90) && 
-          Math.abs((state1.eth_liquidity - expected_eth_received) - state2.eth_liquidity) < 5 &&
-          Number(user_tokens2) === (Number(user_tokens1) - 90));
-
-        defaultAccount = accounts[0];
-        var state2 = await getPoolState();
-        user_tokens2 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
-        
-        await addLiquidity("100", "1");
-        var expected_tokens_added = 100 * state2.token_eth_rate;
-        var state3 = await getPoolState();
-        var user_tokens3 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
-        score += check("Test adding liquidity", swap_fee[0], 
-          state3.eth_liquidity === (state2.eth_liquidity + 100) &&
-          Math.abs(state3.token_liquidity - (state2.token_liquidity + expected_tokens_added)) < 5 &&
-          Math.abs(Number(user_tokens3) - (Number(user_tokens2) - expected_tokens_added)) < 5);
-        
-
-        // accumulate some lp rewards
-        for (var i = 0; i < 20; i++) {
-          await swapETHForTokens("100", "1");
-          await swapTokensForETH("100", "1");
-        }
-
-        var state4 = await getPoolState();
-        var user_tokens4 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
-        await removeLiquidity("10", "1");
-        // set to 22 for a bit of leeway, could potentially reduce to 20 
-        var expected_tokens_removed = (10 + 22 * 100 * swap_fee) * state3.token_eth_rate;
-        var state5 = await getPoolState();
-        var user_tokens5 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
-        score += check("Test removing liquidity", swap_fee[0], 
-          state5.eth_liquidity === (state4.eth_liquidity - 10) &&
-          Math.abs(state5.token_liquidity - (state4.token_liquidity - expected_tokens_removed)) < expected_tokens_removed * 1.2 &&
-          Math.abs(Number(user_tokens5) - (Number(user_tokens4) + expected_tokens_removed)) < expected_tokens_removed * 1.2);
-
-        await removeAllLiquidity("1");
-        expected_tokens_removed = (90 +  22 * 100 * swap_fee) * state5.token_eth_rate;
-        var state6 = await getPoolState();
-        var user_tokens6 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
-        score += check("Test removing all liquidity", swap_fee[0], 
-          Math.abs(state6.eth_liquidity - (state5.eth_liquidity - 90)) < 5 && 
-          Math.abs(state6.token_liquidity - (state5.token_liquidity - expected_tokens_removed)) < expected_tokens_removed * 1.2 &&
-          Number(user_tokens6) > Number(user_tokens5)); 
-    }
-    console.log("Final score: " + score + "/50");
+      await removeAllLiquidity("1");
+      var approx_eth_removed = 50 + (20 * 100 * swap_fee * 50/5100);
+      var approx_tokens_removed = 50 * state3.token_eth_rate + (20 * 100 * swap_fee * 50/5100);
+      var state6 = await getPoolState();
+      var user_tokens6 = await token_contract.connect(provider.getSigner(defaultAccount)).balanceOf(defaultAccount);
+      score += check("Test removing all liquidity", swap_fee[0], 
+        Math.abs(state6.eth_liquidity - (state5.eth_liquidity - approx_eth_removed)) < 10 &&
+        Math.abs(state6.token_liquidity - (state5.token_liquidity - approx_tokens_removed)) < 10 &&
+        Number(user_tokens6) > Number(user_tokens5) + 45 ); 
+  }
+  console.log("Final score: " + score + "/50");
 
 }
 

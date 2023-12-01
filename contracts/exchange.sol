@@ -153,37 +153,38 @@ contract TokenExchange is Ownable {
         external 
         payable
     {
-        print_lps();
-        LP storage lp = lps[msg.sender];
-
-        // Require rate has not slipped out of bounds
-        uint rate = ethToTokenRate();
-        require(rate - exchangePrecisionDiff <= maxExchangeRate, "Current rate has moved above maxExchangeRate");
-        require(rate + exchangePrecisionDiff >= minExchangeRate, "Current rate has moved below minExchangeRate");
-
-        require(msg.value > 0, "Must add positive amount of liquidity");
+        // value is not negative and owns enough eth
+        require(msg.value > 0, "Zero or Negative ETH");
+        require(msg.value <= address(msg.sender).balance, "Must add positive amount of ETH"); //////////////
 
         // Find equivalent amount of tokens given Eth amount
         uint tokensAmount = (msg.value * token_reserves) / eth_reserves;
+        require(token.balanceOf(msg.sender) >= tokensAmount, "Insufficient token balance for liquidity");
 
-        console.log("this equals tokensAmount:", tokensAmount);
-        require(token.balanceOf(msg.sender) >= tokensAmount, "Sender does not have enough tokens to add that amount of liquidity");
-        
-        // Pay contract
-        console.log("Before paying: ", token.balanceOf(msg.sender));
-        token.transferFrom(msg.sender, address(this), tokensAmount);
-        console.log("Contract after payment: ", token.balanceOf(address(this)));
+        // Require rate has not slipped out of bounds
+        uint rate = ethToTokenRate();
+        require(rate - exchangePrecisionDiff <= maxExchangeRate, "Current rate above maxExchangeRate");
+        require(rate + exchangePrecisionDiff >= minExchangeRate, "Current rate below minExchangeRate");
 
-        // Update liquidity
+        console.log("ADDING LIQUIDITY: ", msg.sender);
+        console.log("ETH ADDING: ", msg.value);
+        console.log("TOKENS ADDING:", tokensAmount);
+
+        token.transferFrom(msg.sender, address(this), tokensAmount); // transfer tokens to contract
+        console.log("CONTRACT ETH: ", address(this).balance);
+        console.log("CONTRACT TOKENS: ", token.balanceOf(address(this)));
+
+        LP storage lp = lps[msg.sender];
+
+        // Update total shares and lp shares
         uint newShares = findAmtShares(msg.value);
         total_shares += newShares;
         lp.shares += newShares;
-        console.log("Shares to add: ", newShares);
+        console.log("SHARES ADDED: ", newShares);
 
         // Update exchange state
         eth_reserves = address(this).balance;
         token_reserves = token.balanceOf(address(this));
-
         k = address(this).balance * token.balanceOf(address(this));
 
         // if lp provider is not already in the lp_provider array, add it
@@ -197,9 +198,8 @@ contract TokenExchange is Ownable {
 
         if (!found) {
             lp_providers.push(msg.sender); // Add to lp_providers array
-            console.log("added new lp_provider: ", msg.sender);
         }
-        
+
         print_lps();
     }
 
@@ -210,70 +210,66 @@ contract TokenExchange is Ownable {
         public 
         payable
     {
-        print_lps();
-        LP storage lp = lps[msg.sender];
+        require(amountETH > 0, "Zero or Negative ETH");
+        require(amountETH < eth_reserves, "Withdrawal would deplete ETH reserves");
+
+        // Check token amount does now exceed token reserves
+        uint tokensAmount = ((token_reserves - token_fee_reserves) * amountETH) / eth_reserves;
+        require(tokensAmount < (token_reserves - token_fee_reserves), "Withdrawal would deplete token reserves");
 
         uint rate = ethToTokenRate();
-        console.log("ethTokenRate: ", rate);
-        console.log("maxRate: ", maxExchangeRate);
-        console.log("minRate: ", minExchangeRate);
-        require(rate - exchangePrecisionDiff <= maxExchangeRate, "Current rate has moved above maxExchangeRate");
-        require(rate + exchangePrecisionDiff >= minExchangeRate, "Current rate has moved below minExchangeRate");
+        require(rate - exchangePrecisionDiff <= maxExchangeRate, "Current rate above maxExchangeRate");
+        require(rate + exchangePrecisionDiff >= minExchangeRate, "Current rate below minExchangeRate");
 
-        require(amountETH > 0, "Must remove positive amount of liquidity");
-        require(amountETH < eth_reserves, "Cannot deplete ETH reserves to 0");
-        
+        LP storage lp = lps[msg.sender];
+
         // Require that the LP has enough liquidity to remove this amount of ETH
         uint providerProportion = (lp.shares * multiplier) / total_shares;
         uint amountProportion = (amountETH * multiplier) / eth_reserves;
         require(providerProportion >= amountProportion, "LP has insufficient liquidity");
 
-        uint tokensAmount = ((token_reserves - token_fee_reserves) * amountETH) / eth_reserves;
-        require(tokensAmount < (token_reserves - token_fee_reserves), "Cannot deplete token reserves to 0");
-
-        // update liquidity and shares and rewards to give
+        // Require removing shares less than lp shares
         uint removedShares = findAmtShares(amountETH);
-        uint ethRewards = (removedShares * lp.eth_fees) / lp.shares;
-        uint tokenRewards = ((removedShares * lp.token_fees) / lp.shares) / multiplier;
         require(removedShares <= lp.shares, "Cannot remove more shares than you have");
 
+        // Find fee rewards for LP
+        uint ethRewards = (removedShares * lp.eth_fees) / lp.shares;
+        uint tokenRewards = ((removedShares * (lp.token_fees / multiplier)) / lp.shares);
+
+        // transefer eth and tokens to msg.sender
         payable(msg.sender).transfer(amountETH + ethRewards);
         token.transfer(msg.sender, tokensAmount + tokenRewards);
 
-        total_shares -= removedShares; // remove shares from total
+        // update lp state
+        lp.token_fees -= (removedShares * lp.token_fees) / lp.shares;
+        lp.shares -= removedShares;
+        lp.eth_fees -= ethRewards;
+
+        // uopdate exchange state
+        total_shares -= removedShares;
         eth_fee_reserves -= ethRewards;
         token_fee_reserves -= tokenRewards;
 
-        lp.shares -= removedShares;
-        lp.eth_fees -= ethRewards;
-        lp.token_fees -= tokenRewards;
-
-        // if shares depleted, set remove to true
+        // if shares depleted, remove lp from lp_provider's list
         bool remove = false;
         uint remove_index = 0;
         if (lp.shares == 0) {
             remove = true;
         }
-
-        for (uint i = 0; i < lp_providers.length; i++) {
-            if (lp_providers[i] == msg.sender) { // find index of lp to remove
+        for (uint i = 0; i < lp_providers.length; i++) { // find index or lp to remove
+            if (lp_providers[i] == msg.sender) {
                 remove_index = i;
             }
         }
-
-        if (remove) removeLP(remove_index); // if lp.shares = 0, remove lp from lp_providers array
+        if (remove) {        
+            lp.eth_fees = 0;
+            lp.token_fees = 0;
+            removeLP(remove_index);
+        }
 
         eth_reserves = address(this).balance;
         token_reserves = token.balanceOf(address(this));
         k = address(this).balance * token.balanceOf(address(this));
-
-        // console.log("User balance: ", token.balanceOf(msg.sender));
-        // console.log("Token reserves:", token_reserves);
-        // console.log("K value:", k);
-        // console.log("ETH reserves:", eth_reserves);
-        // console.log("Total shares: ", total_shares);
-        // console.log("User's shares", lp.shares);
-
         print_lps();
     }
 
@@ -283,7 +279,6 @@ contract TokenExchange is Ownable {
         external
         payable
     {
-        print_lps();
         LP storage lp = lps[msg.sender];
 
         // find ETH:Token rate
