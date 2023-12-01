@@ -37,8 +37,8 @@
       ]
     },
     "/Users/jamesstevens/school/CS251/blockchain-dex/contracts/exchange.sol": {
-      "lastModificationDate": 1701388592144,
-      "contentHash": "8b71334396d4c4e7e1e6d43550d289f2",
+      "lastModificationDate": 1701414279523,
+      "contentHash": "9a4a97a53ed613e5843c8dc48ac78d9a",
       "sourceName": "contracts/exchange.sol",
       "solcConfig": {
         "version": "0.8.17",

@@ -504,6 +504,19 @@ const exchange_abi = [
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "print_lps",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -573,7 +586,7 @@ const exchange_abi = [
       },
       {
         "internalType": "uint256",
-        "name": "maxExchangeRate",
+        "name": "minEthTokenExchangeRate",
         "type": "uint256"
       }
     ],
@@ -590,19 +603,6 @@ const exchange_abi = [
         "internalType": "contract Token",
         "name": "",
         "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "tokenToEthRate",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -723,12 +723,12 @@ async function removeAllLiquidity(maxSlippagePct) {
 /*** SWAP ***/
 async function swapTokensForETH(amountToken, maxSlippagePct) {
   let state = await getPoolState();
-  let currentRate = state.token_eth_rate;
+  let currentRate = state.eth_token_rate;
   let maxSlippage = Number(maxSlippagePct) / 100;
-  let maxRate = (currentRate + (maxSlippage * currentRate)) * exchange_rate_multiplier;
-  maxRate = ethers.utils.parseEther(maxRate.toString());
+  let minEthToTokenRate = (currentRate - (maxSlippage * currentRate)) * exchange_rate_multiplier;
+  minEthToTokenRate = ethers.utils.parseEther(minEthToTokenRate.toString());
   await token_contract.connect(provider.getSigner(defaultAccount)).approve(exchange_address, state.token_liquidity);
-  await exchange_contract.connect(provider.getSigner(defaultAccount)).swapTokensForETH(amountToken, maxRate);
+  await exchange_contract.connect(provider.getSigner(defaultAccount)).swapTokensForETH(amountToken, minEthToTokenRate);
 }
 
 async function swapETHForTokens(amountEth, maxSlippagePct) {
@@ -975,6 +975,6 @@ const sanityCheck = async function() {
 // Sleep 10s to ensure init() finishes before sanityCheck() runs on first load.
 // If you run into sanityCheck() errors due to init() not finishing, please extend the sleep time.
 
-// setTimeout(function () {
-//   sanityCheck();
-// }, 10000);
+setTimeout(function () {
+  sanityCheck();
+}, 10000);
