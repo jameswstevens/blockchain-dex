@@ -1,40 +1,42 @@
 // =================== CS251 DEX Project =================== // 
 //                      Design Document                      //
-//                          Names                            //
+//              James Stevens & Campbell Hoskins             //
 // ========================================================= //  
-
-# TODO: Remove this line and add your group names above
 
 1. Explain why adding and removing liquidity to your exchange does not change the exchange rate.
 
 
-# TODO: answer question 1 here
+When you add liquidity to the exchange, the exchange rate does not change because the liquidity provider is adding amounts of eth and tokens
+that are directly proportional to the current exchange reserves of the two currencies. If the exchange rate of eth:tokens is 2:1 and a 
+liquidity provider adds 100 eth of liquidity, then a proportional amount of 50 tokens will also be added to the exchange 
+in order to keeps the exchange rate the same and only change the k value. In the same way, removing liquidity does not change the 
+rate because amount of tokens and eth are removed in amounts proportional to the exchange rate, ensuring that the rate remains the same.
 
 
 2. Explain your scheme for rewarding liquidity providers and justify the design decisions you made. How does it satisfy the liquidity rewards requirements outlined in Section 7?
 
-
-# TODO: answer question 2 here
-
+Each lp recieved a percent of the swap fees. We used a mapping to a struct called LP which contained shares, eth_fees, and token_fees. Each
+ lp shares were caluclated buy the amount of thier eth was in the poolcompared to the total ETH in the exchnage/contract. Given this when a 
+ swap happened, each lp would recieve rewards based off their shares aka. % of the liquid in the pool. This was updated to their eth_fees and
+token_fees so each lp would have its own tally of fees. The contract would store total fees as well. Based on how many shares the lp withdraws,
+ they can take portions of their assigned fees or all of it.
 
 3. Describe at least one method you used to minimize your exchange contract's gas usage. Why was this method effective?
 
-
-# TODO: answer question 3 here
-
+Initially, we used 3 differetn mappings to store the lp shares, eth_fees, and eth_tokens. 
 
 4. Optional Feedback:
 4a. How much time did you spend on the assignment?
 
-# TODO: answer question 4(a) here
+~ 20 hours
 
 4b. What is one thing that would have been useful to know before starting the assignment?
 
-# TODO: answer question 4(b) here
+More explination from section on the outline of the project conceptually
 
 4c. If you could change one with about this assignment, what would you change?
 
-# TODO: answer question 4(c) here
+
 
 4d. Please feel free to include any other feedback you may have below.
 
