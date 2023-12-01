@@ -156,21 +156,8 @@ contract TokenExchange is Ownable {
         print_lps();
         LP storage lp = lps[msg.sender];
 
-        console.log("Token reserves:", token_reserves);
-        console.log("K value:", k);
-        console.log("ETH reserves:", eth_reserves);
-        console.log("User's shares", lp.shares);
-        console.log("Total shares: ", total_shares);
-        console.log("Add liquidity of amount : ", msg.value);
-
         // Require rate has not slipped out of bounds
         uint rate = ethToTokenRate();
-        console.log("ethTokenRate: ", rate);
-        console.log("maxRate: ", maxExchangeRate);
-        console.log("rate - exchangePrecisionDiff: ", rate - exchangePrecisionDiff);
-        console.log("minRate: ", minExchangeRate);
-        
-        console.log("rate + exchangePrecisionDiff: ", rate + exchangePrecisionDiff);
         require(rate - exchangePrecisionDiff <= maxExchangeRate, "Current rate has moved above maxExchangeRate");
         require(rate + exchangePrecisionDiff >= minExchangeRate, "Current rate has moved below minExchangeRate");
 
@@ -207,23 +194,12 @@ contract TokenExchange is Ownable {
                 break;
             }
         }
+
         if (!found) {
             lp_providers.push(msg.sender); // Add to lp_providers array
             console.log("added new lp_provider: ", msg.sender);
         }
-
-        console.log("");
         
-        console.log("After paying: ", token.balanceOf(msg.sender));
-        console.log("Contract after payment: ", token.balanceOf(address(this)));
-        console.log("Token reserves:", token_reserves);
-        console.log("K value:", k);
-        console.log("ETH reserves:", eth_reserves);
-        console.log("Total shares: ", total_shares);
-        console.log("User's shares", lp.shares);
-        console.log("lp eth fees:", lp.eth_fees);
-        console.log("lp token fees:", lp.token_fees);
-
         print_lps();
     }
 
