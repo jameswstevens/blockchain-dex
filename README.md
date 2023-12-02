@@ -1,3 +1,10 @@
+# Blockchain Decentralized Exchange
+
+Peer-to-peer marketplace for trading ETH into LRT (Lighter) in a non-custodial manner.
+Includes availability to contirbute to liquidity pool to earn fee rewards based on percent share.
+
+Based on Uniswap V1 structure.
+
 # Setup
 1) Run npm install --save-dev hardhat
 2) Run npm install --save-dev @nomiclabs/hardhat-ethers ethers
