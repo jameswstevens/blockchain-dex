@@ -1,2 +1,16 @@
-Stanford University, CS251 Project 4: Building a DEX
-Authors: Simon Tao (BS'22, MS'23), Mathew Hogan (BS'22), under the guidance of Professor Dan Boneh.
+# Setup
+1) Run npm install --save-dev hardhat
+2) Run npm install --save-dev @nomiclabs/hardhat-ethers ethers
+3) Run npm install --save-dev @openzeppelin/contracts
+
+# Deploy
+1) Run npx hardhat node
+2) **In a seperate terminal** run npx hardhat run --network localhost scripts/deploy_token.js &
+   run --network localhost scripts/deploy_exchange.js
+3) Open web_app/index.html in your browser
+
+# Test
+1) Choose current address in the top right
+2) Add to liquidity pool or swap tokens (Only address 1 starts with both ETH and LRT)
+
+CS 251 Project 4: DEX
