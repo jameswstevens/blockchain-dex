@@ -1,7 +1,7 @@
 # Blockchain Decentralized Exchange
 
-Peer-to-peer marketplace for trading ETH into LRT (Lighter) in a non-custodial manner.
-Includes availability to contirbute to liquidity pool to earn fee rewards based on percent share.
+Peer-to-peer marketplace for trading ETH and an arbitrary token (LRT in this example) in a non-custodial manner.
+Includes availability for liquidity pool contribution to earn fee rewards based on percent share.
 
 Based on Uniswap V1 structure.
 
