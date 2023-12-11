@@ -5,6 +5,8 @@ Includes availability for liquidity pool contribution to earn fee rewards based 
 
 Based on Uniswap V1 structure.
 
+Fix: Need to update slippage for exchange
+
 # Setup
 1) Run npm install --save-dev hardhat
 2) Run npm install --save-dev @nomiclabs/hardhat-ethers ethers
